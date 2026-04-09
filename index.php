@@ -1,0 +1,8 @@
+<?php
+session_start();
+if (isset($_SESSION['portal_user'])) {
+    header('Location: dashboard.php');
+} else {
+    header('Location: login.php');
+}
+exit;
