@@ -1,0 +1,816 @@
+{
+  "name": "MAX · WhatsApp RRHH — LL&AA",
+  "nodes": [
+    {
+      "parameters": {
+        "jsCode": "const emp = $input.item.json.empleado ?? {};\nconst extraer = $('Extraer mensaje1').item.json;\n\nreturn [{ json: {\n  chatInput:        extraer.mensaje,\n  session_id:       extraer.numero_raw,\n  numero_raw:       extraer.numero_raw,\n  empleado_id:      emp.id         ?? null,\n  empleado_nombre:  emp.nombre      ?? 'Empleado',\n  puesto:           emp.puesto      ?? '',\n  area:             emp.area        ?? '',\n  vac_anuales:      emp.dias_vacaciones_anuales  ?? 0,\n  vac_usadas:       emp.dias_vacaciones_usados   ?? 0,\n  vac_disponibles:  emp.dias_vacaciones_libres   ?? 0,\n  franco_usados:    emp.dias_franco_usados        ?? 0,\n  franco_disponibles: emp.dias_franco_libres     ?? 0\n}}];"
+      },
+      "id": "9df6c7c8-a6b8-4dd6-8157-3911bc178ffa",
+      "name": "Set contexto empleado",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -672,
+        1552
+      ],
+      "notes": "Construye el contexto del empleado para el Agent MAX"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.chatInput }}",
+        "options": {
+          "systemMessage": "=Sos MAX, el asistente inteligente de Recursos Humanos de LL&AA Llerena & Asociados Abogados.\nSiempre respondés en español, de forma amable, clara y concisa.\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n📋 DATOS DEL EMPLEADO\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nNombre:  {{ $json.empleado_nombre }}\nPuesto:  {{ $json.puesto }}\nÁrea:    {{ $json.area }}\n🏖️ VACACIONES\n  • Días anuales asignados: {{ $json.vac_anuales }}\n  • Días ya utilizados:     {{ $json.vac_usadas }}\n  • Días disponibles:       {{ $json.vac_disponibles }}\n📅 FRANCOS COMPENSATORIOS\n  • Días utilizados:        {{ $json.franco_usados }}\n  • Días disponibles:       {{ $json.franco_disponibles }}\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n🛠️ ACCIONES QUE PODÉS GESTIONAR\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n1. Solicitar vacaciones — necesitás decirme fecha de inicio, fecha de fin y motivo\n2. Solicitar franco compensatorio — un día específico\n3. Solicitar permiso especial — fecha y motivo\n4. Solicitar certificado laboral — para qué trámite\n5. Informar licencia médica — fechas y adjuntar certificado\n6. Consultar saldo de días (vacaciones / francos)\n7. Consultar estado de una solicitud anterior\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n📐 REGLAS DE CONVERSACIÓN\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n- Respondé siempre en español, de forma cálida y profesional.\n\n- AL INICIO DE LA CONVERSACIÓN (primer mensaje), sin importar lo que diga el usuario,\n  siempre comenzá con una bienvenida personalizada. Seguí este formato:\n\n  1. Saludá por su nombre de forma cálida.\n  2. Presentate brevemente como MAX, asistente de RRHH.\n  3. Mencioná que por este canal puede gestionar temas de RRHH de forma rápida.\n  4. Mostrá un resumen amigable de sus saldos disponibles (vacaciones y francos).\n  5. Presentá el menú de opciones de forma clara y preguntá en qué podés ayudarle hoy.\n\n  Ejemplo de tono esperado:\n  \"¡Hola, [Nombre]! 👋 Soy MAX, tu asistente de Recursos Humanos de LL&AA.\n  Por este canal podés gestionar tus solicitudes de RRHH de manera rápida y sencilla.\n  \n  📊 Tu saldo actual:\n  🏖️ Vacaciones disponibles: X días\n  📅 Francos disponibles: X días\n  \n  ¿En qué puedo ayudarte hoy? Podés:\n  1️⃣ Solicitar vacaciones\n  2️⃣ Solicitar franco compensatorio\n  3️⃣ Solicitar permiso especial\n  4️⃣ Solicitar certificado laboral\n  5️⃣ Informar licencia médica\n  6️⃣ Consultar tu saldo de días\n  7️⃣ Consultar estado de una solicitud anterior\n  \n  Solo escribí el número o contame directamente qué necesitás. 😊\"\n\n- Después del saludo inicial, continuá la conversación de forma natural según lo que el usuario elija o consulte.\n- Si el usuario en mensajes siguientes pide información sobre sus días, mostrá el detalle completo (anuales / usados / disponibles).\n- Si pide una acción, primero confirmá todos los datos necesarios antes de procesarla. Si falta algún dato, preguntá.\n- Una vez que tenés TODOS los datos para crear una solicitud, incluí al FINAL de tu respuesta el marcador de acción en formato exacto:\n  [ACCION:tipo:YYYY-MM-DD:YYYY-MM-DD:motivo]\n  Tipos válidos: vacaciones, franco, permiso, certificado, licencia\n  Ejemplo: [ACCION:vacaciones:2026-04-15:2026-04-17:Viaje familiar]\n  Para franco o certificado: fecha inicio = fecha fin\n  Ejemplo: [ACCION:franco:2026-04-10:2026-04-10:Guardia del sábado]\n- Si no hay acción concreta, respondé normalmente SIN el marcador.\n- Si el empleado no tiene suficientes días disponibles, informale el saldo y sugerí que hable con RRHH.\n- Nunca inventés datos que no estén en el contexto. Si no sabés algo, decí que lo derivas a RRHH.\n- Fecha de hoy: {{ $now.format('dd/MM/yyyy') }}"
+        }
+      },
+      "id": "d63f9308-f595-4e2e-9cb8-398f9d6af0b1",
+      "name": "Agent MAX",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        -432,
+        1552
+      ]
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Set contexto empleado').item.json.session_id }}",
+        "contextWindowLength": 10
+      },
+      "id": "f8bcbd71-55c9-48c7-9bf4-9f7e12f69c21",
+      "name": "Memory Buffer Window",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        -320,
+        1760
+      ],
+      "notes": "Persiste últimos 10 mensajes por número de WhatsApp. Para producción: reemplazar por memoryPostgresChat"
+    },
+    {
+      "parameters": {
+        "jsCode": "const output = $input.item.json.output ?? '';\nconst ctx    = $('Set contexto empleado').item.json;\n\n// Detectar marcador de acción: [ACCION:tipo:fecha_inicio:fecha_fin:motivo]\nconst accionMatch = output.match(/\\[ACCION:([^:]+):([\\d-]+):([\\d-]+):([^\\]]+)\\]/);\n\nlet intencion      = 'consulta';\nlet fecha_inicio   = null;\nlet fecha_fin      = null;\nlet motivo         = null;\nlet requiere_accion = false;\n\nif (accionMatch) {\n  intencion       = accionMatch[1].trim().toLowerCase();\n  fecha_inicio    = accionMatch[2].trim();\n  fecha_fin       = accionMatch[3].trim();\n  motivo          = accionMatch[4].trim();\n  requiere_accion = true;\n}\n\n// Limpiar marcador del texto que se envía al empleado\nconst respuesta_usuario = output.replace(/\\[ACCION:[^\\]]+\\]/g, '').trim();\n\nreturn [{ json: {\n  respuesta_usuario,\n  intencion,\n  fecha_inicio,\n  fecha_fin,\n  motivo,\n  requiere_accion,\n  empleado_id:     ctx.empleado_id,\n  empleado_nombre: ctx.empleado_nombre,\n  numero_raw:      ctx.numero_raw\n}}];"
+      },
+      "id": "b9cde6f4-738f-4e9c-a747-bd23c4012127",
+      "name": "Parsear salida agente",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -192,
+        1552
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://lab.natodigital.com/llerena/api.php",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "action",
+              "value": "log_consulta"
+            },
+            {
+              "name": "api_key",
+              "value": "max-demo-2026"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "empleado_id",
+              "value": "={{ $json.empleado_id }}"
+            },
+            {
+              "name": "numero_whatsapp",
+              "value": "={{ $json.numero_raw }}"
+            },
+            {
+              "name": "tipo_consulta",
+              "value": "={{ $json.intencion }}"
+            },
+            {
+              "name": "mensaje_usuario",
+              "value": "={{ $('Extraer mensaje1').item.json.mensaje }}"
+            },
+            {
+              "name": "respuesta_bot",
+              "value": "={{ $json.respuesta_usuario }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "f3630b26-d8f7-44ec-b45a-35129b4998c4",
+      "name": "Guardar log consulta",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        48,
+        1552
+      ],
+      "continueOnFail": true,
+      "notes": "Registra cada interacción para estadísticas en el dashboard"
+    },
+    {
+      "parameters": {
+        "resource": "messages-api",
+        "instanceName": "NatoDigital",
+        "remoteJid": "={{ $('Parsear salida agente').item.json.numero_raw }}",
+        "messageText": "={{ $('Parsear salida agente').item.json.respuesta_usuario }}",
+        "options_message": {}
+      },
+      "id": "9eafaf93-a6ed-41d7-bbd6-66a1fe860682",
+      "name": "Responder al empleado",
+      "type": "n8n-nodes-evolution-api.evolutionApi",
+      "typeVersion": 1,
+      "position": [
+        720,
+        1680
+      ],
+      "credentials": {
+        "evolutionApi": {
+          "id": "WvB3qOpq1KbvM0Gf",
+          "name": "evolution_cloudfy"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "max-whatsapp",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "75da7be6-1483-4d1c-b9cb-c2f7e27f0f3b",
+      "name": "Webhook WhatsApp1",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -1824,
+        1760
+      ],
+      "webhookId": "48732b9d-1d1b-4dd3-b958-27777a86050d"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Evolution API — payload de messages.upsert\nconst body = $input.item.json.body ?? $input.item.json;\nconst data = body.data ?? {};\n\nconst jid     = data?.key?.remoteJid ?? '';\nconst numero  = jid.replace('@s.whatsapp.net','').replace('@g.us','');\nconst from    = numero ? '+' + numero : '';\n\nconst msg =\n  data?.message?.conversation ??\n  data?.message?.extendedTextMessage?.text ??\n  data?.message?.imageMessage?.caption ?? '';\n\nconst fromMe  = data?.key?.fromMe ?? false;\nconst isGroup = jid.includes('@g.us');\n\nreturn [{ json: {\n  from,\n  numero_raw:   numero,\n  mensaje:      msg.trim(),\n  profile_name: data?.pushName ?? 'Empleado',\n  ignorar:      fromMe || isGroup || !msg.trim()\n}}];"
+      },
+      "id": "beaaac8c-3ddd-44d8-9a49-8bb4641d8757",
+      "name": "Extraer mensaje1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1584,
+        1760
+      ],
+      "notes": "Parsea webhook Evolution API (messages.upsert)"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "cond-ign",
+              "leftValue": "={{ $json.ignorar }}",
+              "rightValue": false,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "337f86a8-adca-46b4-a041-c839d1b3cf75",
+      "name": "¿Ignorar mensaje?1",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -1360,
+        1760
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://lab.natodigital.com/llerena/api.php",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "action",
+              "value": "empleado"
+            },
+            {
+              "name": "whatsapp",
+              "value": "={{ $json.from }}"
+            },
+            {
+              "name": "api_key",
+              "value": "max-demo-2026"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "ca9f2cf0-9332-405d-a391-c0c8a8d24c26",
+      "name": "Buscar empleado1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        -1120,
+        1632
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-01",
+              "leftValue": "={{ $json.ok }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "85c04a2e-0669-4669-abe2-6bca9d202b9c",
+      "name": "¿Empleado encontrado?1",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -912,
+        1632
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "cond-02",
+              "leftValue": "={{ $json.requiere_accion }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a8e4441e-bd2e-42f7-8b0c-ec8e4babf325",
+      "name": "¿Crear solicitud?1",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        288,
+        1552
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://lab.natodigital.com/api.php",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "action",
+              "value": "crear_solicitud"
+            },
+            {
+              "name": "api_key",
+              "value": "max-demo-2026"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "empleado_id",
+              "value": "={{ $json.empleado_id }}"
+            },
+            {
+              "name": "tipo",
+              "value": "={{ $json.intencion }}"
+            },
+            {
+              "name": "fecha_inicio",
+              "value": "={{ $json.fecha_inicio }}"
+            },
+            {
+              "name": "fecha_fin",
+              "value": "={{ $json.fecha_fin }}"
+            },
+            {
+              "name": "motivo",
+              "value": "={{ $json.motivo }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "2f06a80e-19ca-4c5f-9f0a-36a2a3842c2e",
+      "name": "Crear solicitud API1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        496,
+        1472
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "messages-api",
+        "instanceName": "NatoDigital",
+        "remoteJid": "={{ $('Set contexto empleado').item.json.numero_raw }}",
+        "messageText": "=🔔 *Nueva solicitud — {{ $('Parsear salida agente').item.json.empleado_nombre }}*\n\nTipo: {{ $('Parsear salida agente').item.json.intencion }}\nDesde: {{ $('Parsear salida agente').item.json.fecha_inicio }}\nHasta: {{ $('Parsear salida agente').item.json.fecha_fin }}\nMotivo: {{ $('Parsear salida agente').item.json.motivo }}\nCódigo: {{ $json.solicitud?.codigo ?? 'pendiente' }}\n\nAccede al portal para validar la consulta. \n\n🌐 Portal: https://TU-DOMINIO/portal",
+        "options_message": {}
+      },
+      "id": "336eedba-dd04-4dd6-b4fd-ac22d55d6d3d",
+      "name": "Notificar líder WhatsApp2",
+      "type": "n8n-nodes-evolution-api.evolutionApi",
+      "typeVersion": 1,
+      "position": [
+        720,
+        1472
+      ],
+      "credentials": {
+        "evolutionApi": {
+          "id": "WvB3qOpq1KbvM0Gf",
+          "name": "evolution_cloudfy"
+        }
+      },
+      "disabled": true,
+      "notes": "Credential: evolution_cloudfy | instanceName: NatoDigital"
+    },
+    {
+      "parameters": {
+        "resource": "messages-api",
+        "instanceName": "NatoDigital",
+        "remoteJid": "={{ $('Extraer mensaje1').item.json.numero_raw }}",
+        "messageText": "Hola 👋 No encontré tu número en el sistema de LL&AA. Por favor contactá a RRHH para activar tu acceso a MAX.",
+        "options_message": {}
+      },
+      "id": "9876a29c-9338-4a6d-874e-b35189c18cb3",
+      "name": "Responder: no registrado1",
+      "type": "n8n-nodes-evolution-api.evolutionApi",
+      "typeVersion": 1,
+      "position": [
+        -608,
+        2112
+      ],
+      "credentials": {
+        "evolutionApi": {
+          "id": "WvB3qOpq1KbvM0Gf",
+          "name": "evolution_cloudfy"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"ok\": true }",
+        "options": {}
+      },
+      "id": "b24e2660-857a-4304-83fb-b585624627bf",
+      "name": "Responder webhook OK1",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        944,
+        1680
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        -576,
+        1760
+      ],
+      "id": "dfb87395-f0e2-46f0-835c-4540cbeb40a3",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "EE5z8kzYBe506GMy",
+          "name": "OpenAi account"
+        }
+      }
+    }
+  ],
+  "pinData": {
+    "Webhook WhatsApp1": [
+      {
+        "json": {
+          "headers": {
+            "host": "calmmandrill-n8n.cloudfy.live",
+            "user-agent": "axios/1.13.2",
+            "content-length": "1853",
+            "accept": "application/json, text/plain, */*",
+            "accept-encoding": "gzip, br",
+            "cdn-loop": "cloudflare; loops=1",
+            "cf-connecting-ip": "157.180.91.163",
+            "cf-ipcountry": "FI",
+            "cf-ray": "9e8a5a5628d1193c-FRA",
+            "cf-visitor": "{\"scheme\":\"https\"}",
+            "content-type": "application/json",
+            "x-forwarded-for": "162.158.95.234",
+            "x-forwarded-host": "calmmandrill-n8n.cloudfy.live",
+            "x-forwarded-port": "443",
+            "x-forwarded-proto": "https",
+            "x-forwarded-server": "c69e174a7113",
+            "x-real-ip": "162.158.95.234"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "event": "messages.upsert",
+            "instance": "NatoDigital",
+            "data": {
+              "key": {
+                "remoteJid": "573106512999@s.whatsapp.net",
+                "remoteJidAlt": "150555901083840@lid",
+                "fromMe": false,
+                "id": "3EB016A4BAB742310A63D9",
+                "participant": "",
+                "addressingMode": "pn"
+              },
+              "pushName": "Hector Azcurra",
+              "status": "DELIVERY_ACK",
+              "message": {
+                "messageContextInfo": {
+                  "threadId": [],
+                  "deviceListMetadata": {
+                    "senderKeyIndexes": [],
+                    "recipientKeyIndexes": [],
+                    "senderKeyHash": {
+                      "0": 84,
+                      "1": 68,
+                      "2": 12,
+                      "3": 124,
+                      "4": 76,
+                      "5": 124,
+                      "6": 67,
+                      "7": 42,
+                      "8": 64,
+                      "9": 157
+                    },
+                    "senderTimestamp": {
+                      "low": 1775501493,
+                      "high": 0,
+                      "unsigned": true
+                    },
+                    "senderAccountType": 0,
+                    "receiverAccountType": 0,
+                    "recipientKeyHash": {
+                      "0": 43,
+                      "1": 214,
+                      "2": 102,
+                      "3": 133,
+                      "4": 43,
+                      "5": 15,
+                      "6": 248,
+                      "7": 218,
+                      "8": 246,
+                      "9": 100
+                    },
+                    "recipientTimestamp": {
+                      "low": 1774394705,
+                      "high": 0,
+                      "unsigned": true
+                    }
+                  },
+                  "deviceListMetadataVersion": 2,
+                  "messageSecret": {
+                    "0": 160,
+                    "1": 93,
+                    "2": 40,
+                    "3": 166,
+                    "4": 244,
+                    "5": 109,
+                    "6": 187,
+                    "7": 113,
+                    "8": 92,
+                    "9": 187,
+                    "10": 171,
+                    "11": 118,
+                    "12": 247,
+                    "13": 82,
+                    "14": 126,
+                    "15": 174,
+                    "16": 155,
+                    "17": 213,
+                    "18": 193,
+                    "19": 11,
+                    "20": 135,
+                    "21": 63,
+                    "22": 238,
+                    "23": 50,
+                    "24": 165,
+                    "25": 53,
+                    "26": 83,
+                    "27": 104,
+                    "28": 152,
+                    "29": 66,
+                    "30": 142,
+                    "31": 230
+                  },
+                  "limitSharingV2": {
+                    "sharingLimited": false,
+                    "trigger": 0,
+                    "limitSharingSettingTimestamp": {
+                      "low": 0,
+                      "high": 0,
+                      "unsigned": false
+                    },
+                    "initiatedByMe": false
+                  }
+                },
+                "conversation": "buenas"
+              },
+              "contextInfo": {
+                "mentionedJid": [],
+                "groupMentions": [],
+                "statusAttributions": [],
+                "ephemeralSettingTimestamp": {
+                  "low": 1775405180,
+                  "high": 0,
+                  "unsigned": false
+                },
+                "disappearingMode": {
+                  "initiator": 0,
+                  "trigger": 1,
+                  "initiatedByMe": false
+                }
+              },
+              "messageType": "conversation",
+              "messageTimestamp": 1775578755,
+              "instanceId": "3e0f2825-8b2a-45ec-bd7b-0e5782f54b9b",
+              "source": "web"
+            },
+            "destination": "https://calmmandrill-n8n.cloudfy.live/webhook/max-whatsapp",
+            "date_time": "2026-04-07T13:19:15.367Z",
+            "sender": "5511976304469@s.whatsapp.net",
+            "server_url": "https://calmmandrill-evolution.cloudfy.live",
+            "apikey": "E01A75611251-4C0E-9F77-27340E5836AA"
+          },
+          "webhookUrl": "https://calmmandrill-n8n.cloudfy.live/webhook/max-whatsapp",
+          "executionMode": "production"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Set contexto empleado": {
+      "main": [
+        [
+          {
+            "node": "Agent MAX",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agent MAX": {
+      "main": [
+        [
+          {
+            "node": "Parsear salida agente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Memory Buffer Window": {
+      "ai_memory": [
+        [
+          {
+            "node": "Agent MAX",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parsear salida agente": {
+      "main": [
+        [
+          {
+            "node": "Guardar log consulta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guardar log consulta": {
+      "main": [
+        [
+          {
+            "node": "¿Crear solicitud?1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Responder al empleado": {
+      "main": [
+        [
+          {
+            "node": "Responder webhook OK1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook WhatsApp1": {
+      "main": [
+        [
+          {
+            "node": "Extraer mensaje1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extraer mensaje1": {
+      "main": [
+        [
+          {
+            "node": "¿Ignorar mensaje?1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Ignorar mensaje?1": {
+      "main": [
+        [
+          {
+            "node": "Buscar empleado1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar empleado1": {
+      "main": [
+        [
+          {
+            "node": "¿Empleado encontrado?1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Empleado encontrado?1": {
+      "main": [
+        [
+          {
+            "node": "Set contexto empleado",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Responder: no registrado1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Crear solicitud?1": {
+      "main": [
+        [
+          {
+            "node": "Crear solicitud API1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Responder al empleado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Crear solicitud API1": {
+      "main": [
+        [
+          {
+            "node": "Notificar líder WhatsApp2",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Responder al empleado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notificar líder WhatsApp2": {
+      "main": [
+        [
+          {
+            "node": "Responder webhook OK1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Responder: no registrado1": {
+      "main": [
+        [
+          {
+            "node": "Responder webhook OK1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Agent MAX",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "2b43ff56-30f3-49ad-bbcd-8d32b798be28",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "92928dc14f291de599af5f10aa16cbe9b025df0452d57523f73a3625db259e1c"
+  },
+  "id": "5xFt4M5TadcfIdZx",
+  "tags": []
+}
