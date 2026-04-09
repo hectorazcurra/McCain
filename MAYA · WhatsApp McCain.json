@@ -1,0 +1,542 @@
+{
+  "name": "MAYA · WhatsApp Vendedores McCain",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "mccain-vendedores",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "mc-0001-webhook-whatsapp",
+      "name": "Webhook WhatsApp",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-1824, 800],
+      "webhookId": "b2c3d4e5-f6a7-8901-bcde-f12345678901"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Evolution API — payload de messages.upsert\nconst body = $input.item.json.body ?? $input.item.json;\nconst data = body.data ?? {};\n\nconst jid     = data?.key?.remoteJid ?? '';\nconst numero  = jid.replace('@s.whatsapp.net','').replace('@g.us','');\nconst from    = numero ? '+' + numero : '';\n\nconst msg =\n  data?.message?.conversation ??\n  data?.message?.extendedTextMessage?.text ??\n  data?.message?.imageMessage?.caption ?? '';\n\nconst fromMe  = data?.key?.fromMe ?? false;\nconst isGroup = jid.includes('@g.us');\n\nreturn [{ json: {\n  from,\n  numero_raw:   numero,\n  mensaje:      msg.trim(),\n  profile_name: data?.pushName ?? 'Vendedor',\n  ignorar:      fromMe || isGroup || !msg.trim()\n}}];"
+      },
+      "id": "mc-0002-extraer-mensaje",
+      "name": "Extraer mensaje",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-1584, 800],
+      "notes": "Parsea webhook Evolution API (messages.upsert)"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "cond-ignorar",
+              "leftValue": "={{ $json.ignorar }}",
+              "rightValue": false,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "mc-0003-ignorar-mensaje",
+      "name": "¿Ignorar mensaje?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [-1360, 800]
+    },
+    {
+      "parameters": {
+        "url": "https://TU-DOMINIO/mccain_api.php",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "action",
+              "value": "vendedor"
+            },
+            {
+              "name": "whatsapp",
+              "value": "={{ $json.from }}"
+            },
+            {
+              "name": "api_key",
+              "value": "maya-demo-2026"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "mc-0004-buscar-vendedor",
+      "name": "Buscar vendedor",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [-1120, 672],
+      "continueOnFail": true,
+      "notes": "Retorna ok:true con datos si está registrado, ok:false si no"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-registrado",
+              "leftValue": "={{ $json.ok }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "mc-0005-vendedor-registrado",
+      "name": "¿Vendedor registrado?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [-912, 672]
+    },
+    {
+      "parameters": {
+        "jsCode": "const lookup  = $input.item.json ?? {};\nconst extraer = $('Extraer mensaje').item.json;\n\nconst registrado = lookup.ok === true;\nconst v = lookup.vendedor ?? {};\n\nreturn [{ json: {\n  chatInput:       extraer.mensaje,\n  session_id:      extraer.numero_raw,\n  numero_raw:      extraer.numero_raw,\n  vendedor_id:     v.id     ?? null,\n  vendedor_nombre: v.nombre ?? null,\n  region:          v.region ?? '',\n  estado:          v.estado ?? '',\n  registrado:      registrado\n}}];"
+      },
+      "id": "mc-0006-set-contexto-vendedor",
+      "name": "Set contexto vendedor",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-672, 592],
+      "notes": "Construye contexto para MAYA — maneja tanto vendedor registrado como nuevo"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.chatInput }}",
+        "options": {
+          "systemMessage": "=Sos MAYA, la asistente inteligente de McCain Foods para vendedores del canal foodservice.\nRespondés siempre en español, de forma amable, profesional y concisa.\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n📋 DATOS DEL VENDEDOR\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n{{ $json.registrado ? 'Nombre: ' + $json.vendedor_nombre + '\\nRegión: ' + $json.region : 'Estado: No registrado aún' }}\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n🔐 FLUJO DE REGISTRO\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nSi registrado es FALSE:\n  1. Saludá cordialmente sin usar su nombre (no lo tenés).\n  2. Presentate como MAYA, asistente de McCain.\n  3. Explicá que necesitás registrarlo para darle acceso completo.\n  4. Pedile su nombre y apellido completo.\n  5. Una vez que te dé el nombre, incluí AL FINAL de tu respuesta:\n     [REGISTRO:Nombre Apellido]\n  6. Después del registro, bienvenilo y mostrá el menú.\nSi registrado es TRUE, bienvenilo por su nombre en el primer mensaje y mostrá el menú.\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n🥔 CATÁLOGO DE PRODUCTOS McCAIN\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nPAPAS FRITAS CLÁSICAS\n  • Corte recto, calibres: shoestring (3-4mm), crinkle, straight cut (10-12mm), steak cut\n  • Tecnología IQF — congelado individual, sin conservantes artificiales\n  • Cocción freidora: 175°C, 2.5–3.5 min desde congelado\n  • Rendimiento: 70-80% vs papa fresca\n  • Vida útil: 18-24 meses a -18°C\n  • Formatos: bolsas 1kg, 2.5kg, 9kg food service\n\nPAPAS CONDIMENTADAS (Seasoned)\n  • Recubierta con especias y almidón modificado\n  • Mantiene crocantez hasta 30% más (ideal para delivery)\n  • Freidora: 175°C, 3–4 min | Horno: 200°C, 8–10 min\n\nWEDGES (Gajos)\n  • Papa con cáscara, corte en gajos, recubrimiento condimentado\n  • Freidora: 175°C, 4–5 min | Horno: 220°C, 18-22 min\n  • Porción sugerida: 120–150g por plato\n\nHASH BROWNS\n  • Medallón de papa rallada, ideal para desayuno y brunch\n  • Freidora: 175°C, 2–3 min | Plancha con aceite: 3 min por lado\n  • Horno: 200°C, 12–15 min\n\nONION RINGS\n  • Aros de cebolla con rebozado crujiente\n  • Freidora: 175°C, 2.5–3 min | Horno: 220°C, 15-18 min\n\nMINI ROASTERS / CROQUETAS\n  • Papas mini precocidas para hornear\n  • Horno: 200°C, 15–20 min — ideales para catering y buffets\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n⭐ VENTAJAS COMPETITIVAS McCAIN\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n1. +60 años de experiencia global (fundada 1957, 160+ países)\n2. Tecnología IQF: preserva textura, sabor y nutrientes originales\n3. Sin conservantes ni colorantes artificiales\n4. Calidad uniforme lote a lote — reduce merma en cocina\n5. Rendimiento superior: 70-80% vs ~50% de papa fresca\n6. Ahorro en tiempo de preparación: hasta 40% menos en mise en place\n7. Disponibilidad todo el año, sin estacionalidad\n8. Cadena de frío controlada campo → punto de venta\n9. Certificaciones: Halal, Kosher, ISO 22000, FSSC 22000\n10. Soporte técnico culinario y material de marketing incluido\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n🏆 CERTIFICACIONES\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n• Halal: disponible en productos seleccionados (consultar ejecutivo de cuenta)\n• Kosher: disponible en línea clásica\n• Sin gluten: papas fritas clásicas son naturalmente sin gluten\n• ISO 22000: todas las plantas de producción McCain\n• FSSC 22000: gestión de seguridad alimentaria\n• SENASA / ANVISA: cumplimiento normativo por país\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n📦 PEDIDOS Y COMERCIAL\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n• Pedido mínimo: según distribuidor de zona\n• Tiempos de entrega: 24-72hs hábiles\n• Precios y descuentos: consultar al ejecutivo de cuenta McCain\n• Para ser distribuidor autorizado: contactar oficina comercial McCain\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n🧾 INFORMACIÓN NUTRICIONAL (por 100g cocido)\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n• Papas fritas clásicas: ~270 kcal, 4g prot, 35g HC, 13g grasa\n• Wedges: ~220 kcal, 3g prot, 32g HC, 9g grasa\n• Hash Browns: ~245 kcal, 3g prot, 28g HC, 13g grasa\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n📐 REGLAS DE CONVERSACIÓN\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n1. Respondé siempre en español rioplatense, de forma cálida y profesional.\n\n2. Al inicio de conversación (vendedor registrado), bienvenilo y mostrá el menú:\n   1️⃣ Info de productos  2️⃣ Ventajas y diferenciadores  3️⃣ Preparación y conservación\n   4️⃣ Pedidos  5️⃣ Certificaciones  6️⃣ Nutrición  7️⃣ Soporte técnico\n\n3. AL FINAL de CADA respuesta (excepto durante el flujo de registro), incluí el marcador de tipo:\n   [CONSULTA:info_producto]  [CONSULTA:ventajas]  [CONSULTA:preparacion]\n   [CONSULTA:pedidos]  [CONSULTA:certificaciones]  [CONSULTA:soporte]\n   [CONSULTA:registro]  [CONSULTA:saludo]  [CONSULTA:otro]\n\n4. NUNCA inventés datos que no estén en este prompt. Si no sabés algo, decí 'contactá a tu ejecutivo de cuenta McCain'.\n\n5. Si preguntan por precios: indicá que varían por región y volumen, derivar al ejecutivo de cuenta.\n\n6. Respondé preparación con pasos claros y temperaturas/tiempos exactos.\n\n7. Para consultas de soporte técnico (producto aceitoso, blando, etc.) dá tips prácticos.\n\n8. Fecha de hoy: {{ $now.format('dd/MM/yyyy') }}"
+        }
+      },
+      "id": "mc-0007-agent-maya",
+      "name": "Agent MAYA",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [-432, 592]
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Set contexto vendedor').item.json.session_id }}",
+        "contextWindowLength": 10
+      },
+      "id": "mc-0008-memory-buffer",
+      "name": "Memory Buffer Window",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [-320, 800],
+      "notes": "Persiste últimos 10 mensajes por número de WhatsApp"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "id": "mc-0009-openai-model",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [-576, 800],
+      "credentials": {
+        "openAiApi": {
+          "id": "EE5z8kzYBe506GMy",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const output = $input.item.json.output ?? '';\nconst ctx    = $('Set contexto vendedor').item.json;\n\n// Detectar marcador de registro: [REGISTRO:nombre_completo]\nconst regMatch = output.match(/\\[REGISTRO:([^\\]]+)\\]/);\n\n// Detectar marcador de tipo de consulta: [CONSULTA:tipo]\nconst conMatch = output.match(/\\[CONSULTA:([^\\]]+)\\]/);\n\nconst requiere_registro  = !!regMatch;\nconst nombre_registro    = regMatch ? regMatch[1].trim() : null;\nconst tipo_consulta      = conMatch ? conMatch[1].trim().toLowerCase() : 'otro';\n\n// Limpiar marcadores del texto enviado al vendedor\nconst respuesta_usuario = output\n  .replace(/\\[REGISTRO:[^\\]]+\\]/g, '')\n  .replace(/\\[CONSULTA:[^\\]]+\\]/g, '')\n  .trim();\n\nreturn [{ json: {\n  respuesta_usuario,\n  tipo_consulta,\n  requiere_registro,\n  nombre_registro,\n  vendedor_id:  ctx.vendedor_id,\n  numero_raw:   ctx.numero_raw\n}}];"
+      },
+      "id": "mc-0010-parsear-salida",
+      "name": "Parsear salida agente",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-192, 592]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://TU-DOMINIO/mccain_api.php",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "action",
+              "value": "log_consulta"
+            },
+            {
+              "name": "api_key",
+              "value": "maya-demo-2026"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "vendedor_id",
+              "value": "={{ $json.vendedor_id }}"
+            },
+            {
+              "name": "numero_whatsapp",
+              "value": "={{ $json.numero_raw }}"
+            },
+            {
+              "name": "tipo_consulta",
+              "value": "={{ $json.tipo_consulta }}"
+            },
+            {
+              "name": "mensaje_usuario",
+              "value": "={{ $('Extraer mensaje').item.json.mensaje }}"
+            },
+            {
+              "name": "respuesta_bot",
+              "value": "={{ $json.respuesta_usuario }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "mc-0011-guardar-log",
+      "name": "Guardar log consulta",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [48, 592],
+      "continueOnFail": true,
+      "notes": "Registra cada interacción para estadísticas en el dashboard"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "cond-registro",
+              "leftValue": "={{ $json.requiere_registro }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "mc-0012-registrar-if",
+      "name": "¿Registrar vendedor?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [288, 592]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://TU-DOMINIO/mccain_api.php",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "action",
+              "value": "registrar_vendedor"
+            },
+            {
+              "name": "api_key",
+              "value": "maya-demo-2026"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "nombre",
+              "value": "={{ $json.nombre_registro }}"
+            },
+            {
+              "name": "numero_whatsapp",
+              "value": "={{ $json.numero_raw }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "mc-0013-registrar-api",
+      "name": "Registrar vendedor API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [496, 512],
+      "continueOnFail": true,
+      "notes": "Guarda el nuevo vendedor en la base de datos"
+    },
+    {
+      "parameters": {
+        "resource": "messages-api",
+        "instanceName": "NatoDigital",
+        "remoteJid": "={{ $('Parsear salida agente').item.json.numero_raw }}",
+        "messageText": "={{ $('Parsear salida agente').item.json.respuesta_usuario }}",
+        "options_message": {}
+      },
+      "id": "mc-0014-responder-vendedor",
+      "name": "Responder al vendedor",
+      "type": "n8n-nodes-evolution-api.evolutionApi",
+      "typeVersion": 1,
+      "position": [720, 720],
+      "credentials": {
+        "evolutionApi": {
+          "id": "WvB3qOpq1KbvM0Gf",
+          "name": "evolution_cloudfy"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "messages-api",
+        "instanceName": "NatoDigital",
+        "remoteJid": "={{ $('Extraer mensaje').item.json.numero_raw }}",
+        "messageText": "Lo sentimos, MAYA no está disponible en este momento. Por favor intentá más tarde o contactá a tu representante McCain. 🥔",
+        "options_message": {}
+      },
+      "id": "mc-0015-responder-error",
+      "name": "Responder: no disponible",
+      "type": "n8n-nodes-evolution-api.evolutionApi",
+      "typeVersion": 1,
+      "position": [-608, 1152],
+      "credentials": {
+        "evolutionApi": {
+          "id": "WvB3qOpq1KbvM0Gf",
+          "name": "evolution_cloudfy"
+        }
+      },
+      "disabled": true,
+      "notes": "Fallback — habilitar si se quiere respuesta automática en caso de error"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"ok\": true }",
+        "options": {}
+      },
+      "id": "mc-0016-webhook-ok",
+      "name": "Responder webhook OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [944, 720]
+    }
+  ],
+  "connections": {
+    "Webhook WhatsApp": {
+      "main": [
+        [
+          {
+            "node": "Extraer mensaje",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extraer mensaje": {
+      "main": [
+        [
+          {
+            "node": "¿Ignorar mensaje?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Ignorar mensaje?": {
+      "main": [
+        [
+          {
+            "node": "Buscar vendedor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar vendedor": {
+      "main": [
+        [
+          {
+            "node": "¿Vendedor registrado?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Vendedor registrado?": {
+      "main": [
+        [
+          {
+            "node": "Set contexto vendedor",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Set contexto vendedor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set contexto vendedor": {
+      "main": [
+        [
+          {
+            "node": "Agent MAYA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agent MAYA": {
+      "main": [
+        [
+          {
+            "node": "Parsear salida agente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Memory Buffer Window": {
+      "ai_memory": [
+        [
+          {
+            "node": "Agent MAYA",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Agent MAYA",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parsear salida agente": {
+      "main": [
+        [
+          {
+            "node": "Guardar log consulta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guardar log consulta": {
+      "main": [
+        [
+          {
+            "node": "¿Registrar vendedor?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Registrar vendedor?": {
+      "main": [
+        [
+          {
+            "node": "Registrar vendedor API",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Responder al vendedor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registrar vendedor API": {
+      "main": [
+        [
+          {
+            "node": "Responder al vendedor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Responder al vendedor": {
+      "main": [
+        [
+          {
+            "node": "Responder webhook OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "instanceId": ""
+  },
+  "tags": []
+}
