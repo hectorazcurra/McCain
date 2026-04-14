@@ -15,7 +15,6 @@ $error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $user = trim($_POST['usuario'] ?? '');
     $pass = trim($_POST['password'] ?? '');
-
     if (isset($MCCAIN_ADMIN[$user]) && password_verify($pass, $MCCAIN_ADMIN[$user]['hash'])) {
         $_SESSION['mccain_user'] = [
             'usuario' => $user,
@@ -33,188 +32,256 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MAYA · Portal McCain</title>
+<title>MAYA · Portal McCain — Ingresar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
 :root {
-  --red:    #C8102E;
-  --red2:   #a50d26;
-  --red3:   #e8405a;
-  --navy:   #1a0005;
-  --navy2:  #2d000a;
-  --navy3:  #400010;
-  --border: rgba(200,16,46,.22);
-  --white:  #f8f4f4;
-  --gray:   #9a8a8d;
-  --text:   #e8d8da;
+  --red:     #C8102E;
+  --red-d:   #A00020;
+  --red-l:   #F5E8EB;
+  --yellow:  #FFC72C;
+  --yellow-d:#E6A800;
+  --white:   #FFFFFF;
+  --bg:      #F7F4F0;
+  --text:    #1A1A1A;
+  --text2:   #5C5C5C;
+  --border:  #E0D8D0;
+  --shadow:  0 4px 24px rgba(0,0,0,.10);
+  --radius:  16px;
 }
+
 html, body {
   height: 100%;
-  background: radial-gradient(ellipse at 60% 30%, #3a0010 0%, #1a0005 55%, #0d0002 100%);
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-family: 'Inter', system-ui, sans-serif;
+  background: var(--bg);
   color: var(--text);
 }
-.login-wrap {
+
+/* ── Layout ── */
+.login-page {
   min-height: 100vh;
+  display: grid;
+  grid-template-columns: 1fr 480px;
+}
+
+/* ── Left hero panel ── */
+.login-hero {
+  background: var(--red);
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 1.5rem;
+  padding: 3rem 2.5rem;
+  position: relative;
+  overflow: hidden;
 }
-.login-card {
-  width: 100%;
-  max-width: 400px;
-  background: rgba(200,16,46,.06);
-  border: 1px solid var(--border);
-  border-radius: 18px;
-  padding: 2.25rem 2.25rem 2rem;
-  backdrop-filter: blur(8px);
-  box-shadow: 0 8px 40px rgba(0,0,0,.45), 0 0 0 1px rgba(200,16,46,.08);
+.login-hero::before {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(circle at 20% 80%, rgba(255,199,44,.18) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(0,0,0,.15) 0%, transparent 50%);
 }
-.login-logo {
-  text-align: center;
-  margin-bottom: 1.5rem;
+.hero-content { position: relative; z-index: 1; text-align: center; }
+.hero-logo { margin-bottom: 2rem; }
+.hero-logo img {
+  height: 70px;
+  object-fit: contain;
+  filter: brightness(0) invert(1);
 }
-.login-logo .brand {
-  font-size: 2rem;
-  font-weight: 900;
-  letter-spacing: -.03em;
-  color: #fff;
+.hero-logo .logo-fallback {
+  font-size: 3rem; font-weight: 900; letter-spacing: -.04em; color: #fff;
 }
-.login-logo .brand span { color: var(--red3); }
-.login-logo .tagline {
-  font-size: .78rem;
-  color: var(--gray);
-  margin-top: .25rem;
-  letter-spacing: .08em;
-  text-transform: uppercase;
+.hero-logo .logo-fallback span { color: var(--yellow); }
+
+.hero-title {
+  font-size: 1.7rem; font-weight: 800; color: #fff;
+  line-height: 1.2; margin-bottom: .75rem;
 }
-.login-logo .subtitle {
-  font-size: .7rem;
-  color: rgba(200,16,46,.7);
-  margin-top: .1rem;
-  letter-spacing: .05em;
+.hero-sub {
+  font-size: 1rem; color: rgba(255,255,255,.75);
+  max-width: 320px; margin: 0 auto 2rem;
+  line-height: 1.6;
 }
-h2 {
-  font-size: 1.05rem;
-  font-weight: 700;
-  margin-bottom: 1.5rem;
-  text-align: center;
-  color: var(--white);
-}
-.form-group { margin-bottom: 1rem; }
-label {
-  display: block;
-  font-size: .78rem;
-  font-weight: 600;
-  color: var(--gray);
-  margin-bottom: .4rem;
-  text-transform: uppercase;
-  letter-spacing: .07em;
-}
-input[type="text"], input[type="password"] {
-  width: 100%;
-  padding: .65rem .9rem;
-  background: rgba(255,255,255,.04);
-  border: 1px solid var(--border);
-  border-radius: 9px;
-  color: var(--white);
-  font-size: .9rem;
-  outline: none;
-  transition: border-color .2s;
-}
-input:focus { border-color: var(--red3); background: rgba(200,16,46,.05); }
-button[type="submit"] {
-  width: 100%;
-  padding: .75rem;
-  background: var(--red);
-  color: #fff;
-  font-size: .95rem;
-  font-weight: 700;
-  border: none;
-  border-radius: 10px;
-  cursor: pointer;
-  margin-top: .5rem;
-  transition: background .2s, transform .1s;
+.hero-badge {
+  display: inline-flex; align-items: center; gap: .5rem;
+  background: var(--yellow); color: #1a1a1a;
+  font-size: .82rem; font-weight: 700;
+  padding: .45rem 1rem; border-radius: 999px;
   letter-spacing: .03em;
 }
-button:hover  { background: var(--red2); }
-button:active { transform: scale(.98); }
+
+.hero-dots {
+  position: absolute; bottom: 2rem; left: 0; right: 0;
+  display: flex; justify-content: center; gap: .5rem;
+}
+.hero-dots span {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: rgba(255,255,255,.3);
+}
+.hero-dots span.active { background: var(--yellow); }
+
+/* ── Right form panel ── */
+.login-form-panel {
+  background: var(--white);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 3rem 3.5rem;
+  box-shadow: -4px 0 24px rgba(0,0,0,.06);
+}
+
+.form-header { margin-bottom: 2.25rem; }
+.form-header .welcome {
+  font-size: .8rem; font-weight: 600; color: var(--red);
+  text-transform: uppercase; letter-spacing: .1em; margin-bottom: .5rem;
+}
+.form-header h1 {
+  font-size: 1.75rem; font-weight: 800; color: var(--text);
+  line-height: 1.15;
+}
+.form-header p {
+  font-size: .875rem; color: var(--text2); margin-top: .4rem;
+}
+
+.form-group { margin-bottom: 1.25rem; }
+.form-group label {
+  display: block; font-size: .8rem; font-weight: 600;
+  color: var(--text2); margin-bottom: .4rem;
+  text-transform: uppercase; letter-spacing: .06em;
+}
+.form-group input {
+  width: 100%; padding: .75rem 1rem;
+  background: var(--bg); border: 1.5px solid var(--border);
+  border-radius: 10px; color: var(--text);
+  font-size: .95rem; font-family: inherit; outline: none;
+  transition: border-color .2s, box-shadow .2s;
+}
+.form-group input:focus {
+  border-color: var(--red);
+  box-shadow: 0 0 0 3px rgba(200,16,46,.08);
+  background: #fff;
+}
+
+.btn-login {
+  width: 100%; padding: .85rem;
+  background: var(--red); color: #fff;
+  font-family: inherit; font-size: 1rem; font-weight: 700;
+  border: none; border-radius: 10px; cursor: pointer;
+  margin-top: .5rem;
+  transition: background .2s, transform .1s, box-shadow .2s;
+  display: flex; align-items: center; justify-content: center; gap: .5rem;
+}
+.btn-login:hover  { background: var(--red-d); box-shadow: 0 4px 16px rgba(200,16,46,.35); }
+.btn-login:active { transform: scale(.98); }
+
 .error-box {
-  background: rgba(200,16,46,.12);
-  border: 1px solid rgba(200,16,46,.35);
-  border-radius: 8px;
-  padding: .65rem .9rem;
-  font-size: .83rem;
-  color: #f87171;
-  margin-bottom: 1rem;
-  text-align: center;
+  display: flex; align-items: center; gap: .6rem;
+  background: var(--red-l); border: 1.5px solid rgba(200,16,46,.25);
+  border-radius: 10px; padding: .75rem 1rem;
+  font-size: .875rem; color: var(--red);
+  margin-bottom: 1.25rem; font-weight: 500;
 }
+
 .demo-hint {
-  margin-top: 1.5rem;
-  background: rgba(255,255,255,.03);
-  border: 1px solid rgba(255,255,255,.07);
-  border-radius: 10px;
-  padding: .9rem 1rem;
+  margin-top: 2rem; padding: 1.1rem 1.25rem;
+  background: #FFFBF0; border: 1.5px solid rgba(255,199,44,.5);
+  border-radius: 12px;
 }
-.demo-hint p {
-  font-size: .72rem;
-  color: var(--gray);
-  text-transform: uppercase;
-  letter-spacing: .08em;
-  margin-bottom: .6rem;
-  font-weight: 600;
+.demo-hint .dh-title {
+  font-size: .72rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .1em; color: #8B6C00; margin-bottom: .65rem;
+  display: flex; align-items: center; gap: .4rem;
 }
 .demo-row {
-  display: flex;
-  justify-content: space-between;
-  font-size: .8rem;
-  color: var(--text);
-  padding: .25rem 0;
+  display: flex; justify-content: space-between; align-items: center;
+  padding: .2rem 0; font-size: .85rem; color: var(--text2);
 }
-.demo-row span:last-child {
-  font-family: monospace;
-  color: var(--red3);
-  background: rgba(200,16,46,.08);
-  padding: .1rem .5rem;
-  border-radius: 5px;
+.demo-row .val {
+  font-family: 'Courier New', monospace; font-size: .82rem;
+  background: rgba(255,199,44,.2); color: #6B4F00;
+  padding: .15rem .6rem; border-radius: 5px; font-weight: 700;
+}
+
+.form-footer {
+  margin-top: 2rem; text-align: center;
+  font-size: .78rem; color: var(--text2);
+}
+
+/* ── Responsive ── */
+@media (max-width: 860px) {
+  .login-page { grid-template-columns: 1fr; }
+  .login-hero  { display: none; }
+  .login-form-panel { padding: 2rem 1.5rem; }
 }
 </style>
 </head>
 <body>
-<div class="login-wrap">
-  <div class="login-card">
-    <div class="login-logo">
-      <div class="brand">Mc<span>CAIN</span></div>
-      <div class="tagline">MAYA · Asistente de Vendedores</div>
-      <div class="subtitle">Portal de Monitoreo · Demo</div>
+<div class="login-page">
+
+  <!-- Left hero -->
+  <div class="login-hero">
+    <div class="hero-content">
+      <div class="hero-logo">
+        <img src="mccain_logo.png" alt="McCain"
+             onerror="this.style.display='none';document.getElementById('hfl').style.display='block'">
+        <div id="hfl" class="logo-fallback" style="display:none">Mc<span>CAIN</span></div>
+      </div>
+      <h2 class="hero-title">MAYA<br>Asistente de Vendedores</h2>
+      <p class="hero-sub">Portal de monitoreo de consultas y métricas de uso del chatbot WhatsApp.</p>
+      <div class="hero-badge">📊 Demo · Datos ficticios</div>
+    </div>
+    <div class="hero-dots">
+      <span class="active"></span><span></span><span></span>
+    </div>
+  </div>
+
+  <!-- Right form -->
+  <div class="login-form-panel">
+    <div class="form-header">
+      <div class="welcome">Portal de administración</div>
+      <h1>Iniciar sesión</h1>
+      <p>Ingresá tus credenciales para acceder al dashboard.</p>
     </div>
 
-    <h2>Iniciar sesión</h2>
-
     <?php if ($error): ?>
-      <div class="error-box"><?= htmlspecialchars($error) ?></div>
+    <div class="error-box">
+      <span>⚠️</span>
+      <?= htmlspecialchars($error) ?>
+    </div>
     <?php endif; ?>
 
     <form method="POST">
       <div class="form-group">
         <label for="usuario">Usuario</label>
-        <input type="text" id="usuario" name="usuario" autocomplete="username"
-               value="<?= htmlspecialchars($_POST['usuario'] ?? '') ?>" required>
+        <input type="text" id="usuario" name="usuario" placeholder="mccain"
+               value="<?= htmlspecialchars($_POST['usuario'] ?? '') ?>"
+               autocomplete="username" required>
       </div>
       <div class="form-group">
         <label for="password">Contraseña</label>
-        <input type="password" id="password" name="password" autocomplete="current-password" required>
+        <input type="password" id="password" name="password" placeholder="••••••••"
+               autocomplete="current-password" required>
       </div>
-      <button type="submit">Ingresar →</button>
+      <button type="submit" class="btn-login">
+        Ingresar al portal <span>→</span>
+      </button>
     </form>
 
     <div class="demo-hint">
-      <p>Acceso demo</p>
-      <div class="demo-row"><span>Usuario</span><span>mccain</span></div>
-      <div class="demo-row"><span>Contraseña</span><span>demo2026</span></div>
+      <div class="dh-title">🔑 Acceso demo</div>
+      <div class="demo-row"><span>Usuario</span><span class="val">mccain</span></div>
+      <div class="demo-row"><span>Contraseña</span><span class="val">demo2026</span></div>
+    </div>
+
+    <div class="form-footer">
+      McCain Foods · MAYA Vendedores Demo &nbsp;·&nbsp; <?= date('Y') ?>
     </div>
   </div>
+
 </div>
 </body>
 </html>
